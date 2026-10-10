@@ -88,6 +88,7 @@
             (status.open ? 'Open · until ' + status.until : 'Closed' +
               (status.next ? ' · opens ' + status.next : '')) + '</span>' +
         '</div>' +
+        '<div class="burst" aria-hidden="true"><span>THE CHEAPER<br>PRICE</span></div>' +
         '<div class="hero__title">EAT 4 LESS</div>' +
         '<div class="hero__sub">' + UI.esc(r.tagline) + '</div>' +
         '<div class="hero__actions">' +
@@ -166,7 +167,7 @@
           '<div class="sigcard__name">' + UI.esc(i.name) + '</div>' +
           '<div class="sigcard__desc">' + UI.esc(i.description) + '</div>' +
           '<div class="row row--between mt">' +
-            '<span class="sigcard__price">' + UI.money(i.base_price_cents) + '</span>' +
+            '<span class="pricetag">' + UI.money(i.base_price_cents) + '</span>' +
             (out ? '<span class="tag tag--muted">Sold out</span>'
                  : '<button class="btn btn--primary btn--sm" data-quick="' + i.id + '">Add</button>') +
           '</div>' +
@@ -193,6 +194,15 @@
     r.story.body.forEach(function (p) { h += '<p>' + UI.esc(p) + '</p>'; });
     h += '</div>';
 
+    /* ---------- follow the box: poster-style link to Instagram ---------- */
+    var feedItems = (global.BOX_INSTAGRAM && global.BOX_INSTAGRAM.items) || [];
+    h += '<div class="sect reveal"><a class="followband" href="' + UI.esc(r.instagram_url) +
+      '" target="_blank" rel="noopener">' +
+      '<div class="followband__k">Tag us. Get featured.</div>' +
+      '<div class="followband__t">Follow ' + UI.esc(r.instagram) + '</div>' +
+      '<div class="followband__s">Street food, late nights and everything in between. Scroll the feed &rarr;</div>' +
+      '</a></div>';
+
     /* ---------- from the feed (only when the client has approved Instagram sync) ---------- */
     var feed = (global.BOX_INSTAGRAM && global.BOX_INSTAGRAM.items) || [];
     if (feed.length) {
@@ -214,7 +224,7 @@
       h += '<button class="glance__card" data-quick="' + i.id + '"' + (global.Store.isSoldOut(i.id) ? ' disabled' : '') + '>' +
         (t ? '<img src="' + t + '" alt="" loading="lazy">' : '') +
         '<div class="glance__b"><div class="glance__n">' + UI.esc(i.name) + '</div>' +
-        '<div class="glance__p">' + UI.money(i.base_price_cents) + '</div></div></button>';
+        '<span class="pricetag">' + UI.money(i.base_price_cents) + '</span></div></button>';
     });
     h += '</div></div>';
 
