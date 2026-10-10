@@ -48,6 +48,54 @@
 
   var state = null;
   var subs = [];
+
+  function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+  /* The seed catalogue, captured once before any admin edit, so Reset can restore it. */
+  var PRISTINE = null;
+  function pristine() {
+    if (!PRISTINE) {
+      var m = global.Data.menu;
+      PRISTINE = { items: clone(m.items), zones: clone(m.delivery_zones),
+                   hours: clone(m.hours || []), categories: clone(m.categories) };
+    }
+    return PRISTINE;
+  }
+
+  /* Make the editable catalogue the live one: Data.menu points at state, so every
+     view (customer, landing, kitchen, admin) reads the same edited menu. */
+  function applyCatalogue() {
+    var m = global.Data.menu;
+    if (!Array.isArray(state.items)) state.items = clone(pristine().items);
+    if (!Array.isArray(state.zones)) state.zones = clone(pristine().zones);
+    if (!Array.isArray(state.hours)) state.hours = clone(pristine().hours);
+    if (!Array.isArray(state.categories)) state.categories = clone(pristine().categories);
+    if (state.special === undefined) state.special = null;
+    if (!state.customerNotes) state.customerNotes = {};
+    m.items = state.items;
+    m.delivery_zones = state.zones;
+    m.hours = state.hours;
+    m.categories = state.categories;
+  }
+
+  /* Calendar date in Johannesburg, YYYY-MM-DD. */
+  function sastDate(ms) {
+    return new Date(ms || Date.now()).toLocaleDateString('en-CA', { timeZone: 'Africa/Johannesburg' });
+  }
+  function slug(t) { return String(t).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30); }
+  function phoneKey(p) { var d = String(p || '').replace(/\D/g, ''); return d.length >= 9 ? d.slice(-9) : d; }
+  function validHM(t) { return /^([01]\d|2[0-3]):[0-5]\d$/.test(t || ''); }
+
+  /* The special in effect right now, or null. Used by pricing and the storefront. */
+  function activeSpecial() {
+    var sp = state && state.special;
+    if (!sp || sp.date !== sastDate()) return null;
+    if (sp.branch && sp.branch !== 'ALL' && sp.branch !== state.settings.branchCode) return null;
+    var item = (state.items || []).find(function (i) { return i.id === sp.item_id; });
+    if (!item) return null;
+    return { item: item, price_cents: sp.price_cents != null ? sp.price_cents : item.base_price_cents,
+             note: sp.note || '', date: sp.date };
+  }
   var bc = null;
 
   function blankState() {
@@ -99,6 +147,8 @@
     var item = menu.items.find(function (i) { return i.id === itemId; });
     if (!item) return null;
     var unit = item.base_price_cents;
+    var sp = activeSpecial();
+    if (sp && sp.item.id === itemId && sp.price_cents != null) unit = sp.price_cents;
     var opts = [];
     (selections || []).forEach(function (sel) {
       var g = menu.option_groups[sel.group];
@@ -190,18 +240,21 @@
       state = load();
       if (!state) { state = blankState(); seed(); save(); }
       if (!Array.isArray(state.events)) { state.events = seedEvents(); save(); }
+      pristine();
+      applyCatalogue();
+      save();
       try { bc = new BroadcastChannel(CHANNEL); } catch (e) { bc = null; }
       if (bc) {
         bc.onmessage = function () {
           var fresh = load();
-          if (fresh) { state = fresh; emit(); }
+          if (fresh) { state = fresh; applyCatalogue(); emit(); }
         };
       }
       /* another tab (or the driver view) changed something */
       window.addEventListener('storage', function (e) {
         if (e.key !== KEY) return;
         var fresh = load();
-        if (fresh) { state = fresh; emit(); }
+        if (fresh) { state = fresh; applyCatalogue(); emit(); }
       });
       return state;
     },
@@ -286,7 +339,7 @@
 
     applyPromo: function (code) {
       var p = state.settings.promos.find(function (x) { return x.code === code.toUpperCase(); });
-      if (!p) return false;
+      if (!p || p.active === false) return false;
       if (p.min_order_cents && Store.cartTotals().subtotal_cents < p.min_order_cents) return false;
       Store.cart().promo = p;
       save(); emit();
@@ -451,6 +504,218 @@
       save(); emit();
     },
 
+    /* --- catalogue: menu items & categories --- */
+    items: function () { return state.items; },
+    categories: function () { return state.categories; },
+
+    itemSave: function (it) {
+      var name = String(it.name || '').trim().slice(0, 80);
+      var price = Math.round(Number(it.base_price_cents));
+      if (!name || !(price >= 0)) return null;
+      if (!state.categories.some(function (c) { return c.id === it.category; })) return null;
+      var clean = {
+        id: it.id || (slug(name) + '-' + uid().toLowerCase().slice(0, 3)),
+        category: it.category,
+        name: name,
+        description: String(it.description || '').trim().slice(0, 200),
+        base_price_cents: price,
+        prep_time_min: Math.max(1, Math.min(120, parseInt(it.prep_time_min, 10) || 10)),
+        is_signature: !!it.is_signature,
+        image: it.image || null,
+        groups: Array.isArray(it.groups) ? it.groups : []
+      };
+      var i = state.items.findIndex(function (x) { return x.id === clean.id; });
+      if (i > -1) state.items[i] = clean; else state.items.push(clean);
+      applyCatalogue(); save(); emit();
+      return clean;
+    },
+
+    itemDelete: function (id) {
+      state.items = state.items.filter(function (i) { return i.id !== id; });
+      delete state.settings.soldOut[id];
+      if (state.special && state.special.item_id === id) state.special = null;
+      applyCatalogue(); save(); emit();
+    },
+
+    categorySave: function (c) {
+      var name = String(c.name || '').trim().slice(0, 40);
+      if (!name) return null;
+      var clean = { id: c.id || slug(name), name: name,
+                    sort: parseInt(c.sort, 10) || (state.categories.length + 1), image: c.image || null };
+      var i = state.categories.findIndex(function (x) { return x.id === clean.id; });
+      if (i > -1) state.categories[i] = clean; else state.categories.push(clean);
+      applyCatalogue(); save(); emit();
+      return clean;
+    },
+
+    categoryDelete: function (id) {
+      if (state.items.some(function (i) { return i.category === id; })) return false;   // never orphan items
+      state.categories = state.categories.filter(function (c) { return c.id !== id; });
+      applyCatalogue(); save(); emit();
+      return true;
+    },
+
+    /* --- today's special (applies to the price in the cart) --- */
+    todaysSpecial: function () { return activeSpecial(); },
+
+    setSpecial: function (sp) {
+      var item = state.items.find(function (i) { return i.id === sp.item_id; });
+      if (!item) return false;
+      var price = (sp.price_cents === '' || sp.price_cents == null) ? null : Math.round(Number(sp.price_cents));
+      if (price !== null && !(price >= 0)) return false;
+      state.special = { item_id: item.id, price_cents: price,
+                        note: String(sp.note || '').trim().slice(0, 120),
+                        branch: sp.branch || 'ALL', date: sastDate() };
+      save(); emit();
+      return true;
+    },
+
+    clearSpecial: function () { state.special = null; save(); emit(); },
+
+    /* --- hours, delivery zones, promo codes --- */
+    setHours: function (rows) {
+      if (!rows.every(function (r) { return validHM(r.open) && validHM(r.close); })) return false;
+      state.hours = rows.map(function (r) { return { day: r.day, open: r.open, close: r.close }; });
+      applyCatalogue(); save(); emit();
+      return true;
+    },
+
+    zoneSave: function (z) {
+      var name = String(z.name || '').trim().slice(0, 60);
+      if (!name || !z.branch) return null;
+      var clean = { branch: z.branch, name: name,
+                    fee_cents: Math.max(0, Math.round(Number(z.fee_cents) || 0)),
+                    min_order_cents: Math.max(0, Math.round(Number(z.min_order_cents) || 0)),
+                    eta_minutes: Math.max(5, parseInt(z.eta_minutes, 10) || 30) };
+      var i = state.zones.findIndex(function (x) { return x.branch === clean.branch && x.name === clean.name; });
+      if (i > -1) state.zones[i] = clean; else state.zones.push(clean);
+      applyCatalogue(); save(); emit();
+      return clean;
+    },
+
+    zoneDelete: function (branch, name) {
+      state.zones = state.zones.filter(function (z) { return !(z.branch === branch && z.name === name); });
+      applyCatalogue(); save(); emit();
+    },
+
+    promoSave: function (p) {
+      var code = String(p.code || '').trim().toUpperCase().slice(0, 20);
+      var value = Math.round(Number(p.value));
+      if (!code || !(value > 0 && value <= 100)) return null;
+      var clean = { code: code, type: 'percent', value: value,
+                    min_order_cents: Math.max(0, Math.round(Number(p.min_order_cents) || 0)),
+                    active: p.active !== false };
+      var i = state.settings.promos.findIndex(function (x) { return x.code === code; });
+      if (i > -1) state.settings.promos[i] = clean; else state.settings.promos.push(clean);
+      save(); emit();
+      return clean;
+    },
+
+    promoToggle: function (code) {
+      var p = state.settings.promos.find(function (x) { return x.code === code; });
+      if (!p) return false;
+      p.active = p.active === false; save(); emit();
+      return p.active;
+    },
+
+    promoDelete: function (code) {
+      state.settings.promos = state.settings.promos.filter(function (x) { return x.code !== code; });
+      save(); emit();
+    },
+
+    /* --- CRM: customers are built from orders, keyed by phone --- */
+    customers: function () {
+      var map = {};
+      state.orders.forEach(function (o) {
+        var k = phoneKey(o.customer && o.customer.phone);
+        if (!k) return;
+        var c = map[k] || (map[k] = { key: k, name: '', phone: o.customer.phone, orders: 0, cancelled: 0,
+                                      spend_cents: 0, first_at: null, last_at: null, dishes: {},
+                                      branches: {}, cod: 0 });
+        if (o.status === 'CANCELLED') { c.cancelled++; return; }
+        c.orders++;
+        c.spend_cents += o.total_cents;
+        if (!c.first_at || o.created_at < c.first_at) c.first_at = o.created_at;
+        if (!c.last_at || o.created_at > c.last_at) {
+          c.last_at = o.created_at; c.name = o.customer.name; c.phone = o.customer.phone;
+        }
+        o.items.forEach(function (l) { c.dishes[l.name] = (c.dishes[l.name] || 0) + l.qty; });
+        c.branches[o.branch || ''] = true;
+        if (o.payment_method === 'cod') c.cod++;
+      });
+      var week = 7 * 86400000, month = 30 * 86400000, nowMs = Date.now();
+      return Object.keys(map).map(function (k) {
+        var c = map[k];
+        var fav = Object.keys(c.dishes).sort(function (a, b) { return c.dishes[b] - c.dishes[a]; })[0] || '';
+        var tags = [];
+        if (c.orders >= 3 || c.spend_cents >= 100000) tags.push('VIP');
+        if (c.orders >= 2) tags.push('Repeat');
+        if (c.orders === 1 && c.last_at && nowMs - c.last_at < week) tags.push('New');
+        if (c.orders >= 1 && c.last_at && nowMs - c.last_at > month) tags.push('Lapsed');
+        return { key: k, name: c.name || 'Guest', phone: c.phone, orders: c.orders, cancelled: c.cancelled,
+                 spend_cents: c.spend_cents, aov_cents: c.orders ? Math.round(c.spend_cents / c.orders) : 0,
+                 first_at: c.first_at, last_at: c.last_at, favourite: fav, cod: c.cod, tags: tags,
+                 note: state.customerNotes[k] || '' };
+      }).sort(function (a, b) { return b.spend_cents - a.spend_cents; });
+    },
+
+    customerNote: function (key, text) {
+      state.customerNotes[key] = String(text || '').trim().slice(0, 500);
+      save(); emit();
+    },
+
+    /* Export for the client's own marketing use. Marketing consent is NOT captured yet,
+       so the column says so honestly rather than implying anyone opted in (POPIA). */
+    customersCsv: function () {
+      var rows = [['name', 'phone', 'orders', 'spend_rand', 'avg_order_rand', 'favourite', 'last_order', 'tags', 'marketing_consent']];
+      Store.customers().forEach(function (c) {
+        rows.push([c.name, c.phone, c.orders, (c.spend_cents / 100).toFixed(2), (c.aov_cents / 100).toFixed(2),
+                   c.favourite, c.last_at ? sastDate(c.last_at) : '', c.tags.join(' '), 'not captured']);
+      });
+      return rows.map(function (r) {
+        return r.map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(',');
+      }).join('\n');
+    },
+
+    /* --- dashboard numbers --- */
+    analytics: function (days) {
+      days = days || 7;
+      var buckets = [], idx = {}, i;
+      for (i = days - 1; i >= 0; i--) {
+        var d = sastDate(Date.now() - i * 86400000);
+        var b = { date: d, label: new Date(d + 'T12:00:00+02:00').toLocaleDateString('en-ZA', { weekday: 'short', timeZone: 'Africa/Johannesburg' }),
+                  revenue_cents: 0, orders: 0 };
+        buckets.push(b); idx[d] = b;
+      }
+      var dishes = {}, fulfil = { delivery: 0, pickup: 0 }, pay = { card: 0, eft: 0, cod: 0 }, valid = 0, spend = 0;
+      state.orders.forEach(function (o) {
+        if (o.status === 'CANCELLED') return;
+        valid++; spend += o.total_cents;
+        var d = sastDate(o.created_at);
+        if (idx[d]) { idx[d].orders++; idx[d].revenue_cents += o.total_cents; }
+        o.items.forEach(function (l) { dishes[l.name] = (dishes[l.name] || 0) + l.qty; });
+        fulfil[o.fulfilment] = (fulfil[o.fulfilment] || 0) + 1;
+        pay[o.payment_method] = (pay[o.payment_method] || 0) + 1;
+      });
+      var custs = Store.customers();
+      var repeat = custs.filter(function (c) { return c.orders >= 2; }).length;
+      var today = idx[sastDate()] || { revenue_cents: 0, orders: 0 };
+      return {
+        days: buckets,
+        today_revenue_cents: today.revenue_cents,
+        today_orders: today.orders,
+        week_revenue_cents: buckets.reduce(function (s, b) { return s + b.revenue_cents; }, 0),
+        aov_cents: valid ? Math.round(spend / valid) : 0,
+        top_dishes: Object.keys(dishes).map(function (n) { return { name: n, qty: dishes[n] }; })
+                      .sort(function (a, b) { return b.qty - a.qty; }).slice(0, 6),
+        fulfilment: fulfil, payment: pay,
+        customers: custs.length, repeat_customers: repeat,
+        repeat_rate: custs.length ? Math.round(repeat / custs.length * 100) : 0,
+        sold_out: Object.keys(state.settings.soldOut).filter(function (k) { return state.settings.soldOut[k]; }).length,
+        live: Store.active().length
+      };
+    },
+
     stats: function () {
       var done = state.orders.filter(function (o) {
         return ['DELIVERED', 'COLLECTED', 'COMPLETED'].indexOf(o.status) > -1;
@@ -469,6 +734,13 @@
 
     reset: function () {
       state = blankState();
+      var base = pristine();
+      state.items = clone(base.items);
+      state.zones = clone(base.zones);
+      state.hours = clone(base.hours);
+      state.categories = clone(base.categories);
+      state.special = null;
+      applyCatalogue();   /* point Data.menu at the seed copy before seeding orders */
       seed();
       save();
       emit();
