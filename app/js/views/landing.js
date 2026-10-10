@@ -106,12 +106,14 @@
     h += '<div class="ticker" aria-hidden="true"><div class="ticker__track">' + strip + strip + '</div></div>';
 
     /* ---------- tonight banner ---------- */
-    var special = m.items.find(function (i) { return i.id === 'family-meal-1'; });
+    var sp = global.Store.todaysSpecial();
     h += '<div class="tonight reveal">' +
       '<div><div class="tonight__k">' + (status.open ? 'Open now · until ' + status.until : 'Closed right now') + '</div>' +
       '<div class="tonight__t">Tonight at ' + UI.esc(branch.short) + '</div></div>' +
-      (special ? '<div class="tonight__s"><span class="tag tag--new">Demo special</span> ' +
-        '<strong>' + UI.esc(special.name) + '</strong> ' + UI.money(special.base_price_cents) + '</div>' : '') +
+      (sp ? '<div class="tonight__s"><span class="tag tag--new">Today&rsquo;s special</span> ' +
+        '<strong>' + UI.esc(sp.item.name) + '</strong> ' + UI.money(sp.price_cents) +
+        (sp.price_cents !== sp.item.base_price_cents ? ' <s class="muted">' + UI.money(sp.item.base_price_cents) + '</s>' : '') +
+        (sp.note ? ' <span class="tiny muted">' + UI.esc(sp.note) + '</span>' : '') + '</div>' : '') +
       '<button class="btn btn--primary" data-start>Order now</button></div>';
 
     /* ---------- events (admin-published; hidden when none are upcoming) ---------- */
