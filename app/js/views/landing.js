@@ -79,7 +79,7 @@
 
     /* ---------- hero ---------- */
     h += '<div class="hero">' +
-      '<img class="hero__img" src="' + img(r.hero_image) + '" alt="">' +
+      '<img class="hero__img" src="../assets/hero/hero-poster.jpg" alt="">' +
       '<div class="hero__scrim"></div>' +
       '<div class="hero__body">' +
         '<div class="hero__row">' +
