@@ -271,6 +271,7 @@
       '<div class="foot__tag">' + UI.esc(r.tagline_commercial) + '</div>' +
       '<div class="foot__tag" style="margin-top:6px">' + UI.esc(r.tagline) + '</div>' +
       '<div class="foot__fine">Demo storefront · no real payments are taken</div>' +
+      '<div class="foot__credit"><a href="https://eliteway.co.za" target="_blank" rel="noopener">Product of Elite Way Holdings</a></div>' +
     '</footer></div>';
 
     host.innerHTML = h;
