@@ -74,6 +74,9 @@
     });
     h += '</div>';
 
+    /* --- events --- */
+    h += global.EventsAdmin.card();
+
     /* --- zones --- */
     h += '<div class="card" style="margin-bottom:14px">' +
       '<h3 style="font-size:15px">Delivery zones</h3>' +
@@ -101,6 +104,7 @@
 
     h += '</div>';
     host.innerHTML = h;
+    global.EventsAdmin.bind(host);
 
     UI.delegate(host, '[data-so]', 'click', function (e, el) {
       Store.toggleSoldOut(el.getAttribute('data-so'));
