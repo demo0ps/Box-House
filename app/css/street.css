@@ -1,0 +1,62 @@
+/* ============================================================
+   Street-poster layer, from the brand's own social posts.
+   Bold condensed headlines, red price tags, yellow starburst,
+   poster bands. System fonts only (no external fonts, works offline).
+   ============================================================ */
+
+:root{
+  --poster: Impact, 'Haettenschweiler', 'Arial Narrow Bold', 'Franklin Gothic Heavy', 'Arial Black', sans-serif;
+  --tag: #E4572E;
+}
+
+/* headlines get the poster face */
+.hero__title,.sect__h h2,.story h2,.evcard__t,.tonight__t,.catcard__name,.stepcard__n,.followband__t{
+  font-family:var(--poster);letter-spacing:.01em;text-transform:uppercase;
+}
+
+/* red price tags, as on the printed menu */
+.pricetag{display:inline-block;background:var(--tag);color:#fff;font-family:var(--poster);
+  font-size:15px;letter-spacing:.02em;padding:4px 9px;border-radius:4px;transform:rotate(-2deg);
+  box-shadow:0 4px 0 #7E2E22;white-space:nowrap}
+.glance__p{display:none}
+.glance__card .pricetag{margin-top:7px}
+.glance__b{display:flex;flex-direction:column;gap:2px}
+
+/* yellow starburst sticker over the hero */
+.burst{position:absolute;right:18px;top:120px;width:118px;height:118px;z-index:3;
+  display:grid;place-items:center;transform:rotate(12deg);
+  background:var(--primary);color:#0A0A0A;
+  clip-path:polygon(50% 0%,61% 12%,76% 6%,80% 21%,95% 22%,90% 36%,100% 50%,90% 64%,95% 78%,80% 79%,76% 94%,61% 88%,50% 100%,39% 88%,24% 94%,20% 79%,5% 78%,10% 64%,0% 50%,10% 36%,5% 22%,20% 21%,24% 6%,39% 12%)}
+.burst span{font-family:var(--poster);font-size:17px;line-height:.95;text-align:center;text-transform:uppercase}
+@media(max-width:640px){.burst{width:92px;height:92px;top:96px;right:10px}.burst span{font-size:13px}}
+
+/* poster band that links to Instagram */
+.followband{display:block;position:relative;overflow:hidden;text-align:center;
+  background:var(--primary);color:#0A0A0A;border-radius:6px;padding:clamp(28px,6vw,54px) 18px;
+  border:3px solid #0A0A0A;box-shadow:8px 8px 0 #0A0A0A;transition:transform .2s ease,box-shadow .2s ease}
+.followband:hover{transform:translate(-3px,-3px);box-shadow:11px 11px 0 #0A0A0A}
+.followband::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.12;
+  background:repeating-linear-gradient(-45deg,#0A0A0A 0 10px,transparent 10px 20px)}
+.followband__k{position:relative;font-family:var(--poster);font-size:15px;letter-spacing:.12em;text-transform:uppercase}
+.followband__t{position:relative;font-family:var(--poster);font-size:clamp(40px,9vw,88px);line-height:.95;margin:10px 0}
+.followband__s{position:relative;font-size:15px;font-weight:700;max-width:46ch;margin:0 auto}
+
+/* the strip above the hero reads like the flyer header */
+.ticker{transform:rotate(-1deg);margin:0 -10px}
+.ticker span{font-family:var(--poster);text-transform:uppercase}
+
+/* sticker-style event kind */
+.evcard__kind{transform:rotate(-2deg);box-shadow:3px 3px 0 #0A0A0A}
+
+/* ---- phone fixes ---- */
+.followband,.followband:hover{text-decoration:none;color:#0A0A0A}
+.followband__t{font-size:clamp(30px,9vw,88px);overflow-wrap:anywhere;word-break:break-word}
+@media(max-width:700px){
+  .topbar{flex-wrap:wrap;gap:8px;padding:8px 12px}
+  .roles{order:3;width:100%;overflow-x:auto;flex-wrap:nowrap;gap:6px;padding-bottom:2px;scrollbar-width:none}
+  .roles::-webkit-scrollbar{display:none}
+  .roles .role{flex:0 0 auto;white-space:nowrap}
+  .topbar__right{margin-left:auto}
+}
+.followband__t{font-size:clamp(22px,6.2vw,88px);white-space:nowrap}
+.followband__t{font-size:clamp(18px,5.2vw,88px)}
