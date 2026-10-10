@@ -54,6 +54,7 @@
     return {
       seq: 1,
       orders: [],
+      events: [],
       drivers: [
         { id: 'd1', name: 'Sipho M.', phone: '082 441 0192', active: true },
         { id: 'd2', name: 'Lerato K.', phone: '071 228 7734', active: true },
@@ -118,9 +119,15 @@
   var SEED_NAMES = ['Palesa M.', 'Kagiso T.', 'Naledi S.', 'Bongani R.', 'Amahle D.', 'Tebogo L.'];
   var SEED_SUBURBS = ['Igqagqa', 'Tembisa Central', 'Birchleigh'];
 
+  function seedEvents() {
+    var src = (global.BOX_EMBEDDED && global.BOX_EMBEDDED.events && global.BOX_EMBEDDED.events.items) || [];
+    return JSON.parse(JSON.stringify(src));
+  }
+
   function seed() {
     var menu = global.Data.menu;
     if (!menu) return;
+    state.events = seedEvents();
     var statuses = ['PAID', 'ACCEPTED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'];
     var n = 6;
     for (var i = 0; i < n; i++) {
@@ -182,6 +189,7 @@
     init: function () {
       state = load();
       if (!state) { state = blankState(); seed(); save(); }
+      if (!Array.isArray(state.events)) { state.events = seedEvents(); save(); }
       try { bc = new BroadcastChannel(CHANNEL); } catch (e) { bc = null; }
       if (bc) {
         bc.onmessage = function () {
@@ -390,6 +398,57 @@
       state.orders.push(o);
       save(); emit();
       return o;
+    },
+
+    /* --- events (admin-managed, promoted on the storefront) --- */
+    events: function (opts) {
+      var list = state.events.slice();
+      if (opts && opts.publishedOnly) list = list.filter(function (e) { return e.published; });
+      if (opts && opts.branch) list = list.filter(function (e) { return e.branch === opts.branch || e.branch === 'ALL'; });
+      return list.sort(function (a, b) { return new Date(a.starts_at) - new Date(b.starts_at); });
+    },
+
+    /* Upcoming = not yet ended. Past events drop off the storefront automatically. */
+    upcomingEvents: function (opts) {
+      var nowMs = Date.now();
+      return Store.events(Object.assign({ publishedOnly: true }, opts || {})).filter(function (e) {
+        return new Date(e.ends_at || e.starts_at).getTime() > nowMs;
+      });
+    },
+
+    eventSave: function (ev) {
+      var clean = {
+        id: ev.id || ('ev-' + uid().toLowerCase()),
+        title: String(ev.title || '').trim().slice(0, 80),
+        kind: String(ev.kind || 'Event').trim().slice(0, 30),
+        branch: ev.branch || 'TEM',
+        starts_at: ev.starts_at,
+        ends_at: ev.ends_at || ev.starts_at,
+        venue: String(ev.venue || '').trim().slice(0, 80),
+        blurb: String(ev.blurb || '').trim().slice(0, 240),
+        image: ev.image || '',
+        ticket_url: String(ev.ticket_url || '').trim(),
+        ticket_label: String(ev.ticket_label || 'Get tickets').trim().slice(0, 30),
+        published: !!ev.published
+      };
+      if (!clean.title || !clean.starts_at) return null;
+      if (clean.ticket_url && !/^https:\/\//i.test(clean.ticket_url)) return null;   // https only
+      var i = state.events.findIndex(function (e) { return e.id === clean.id; });
+      if (i > -1) state.events[i] = clean; else state.events.push(clean);
+      save(); emit();
+      return clean;
+    },
+
+    eventToggle: function (id) {
+      var e = state.events.find(function (x) { return x.id === id; });
+      if (!e) return false;
+      e.published = !e.published; save(); emit();
+      return e.published;
+    },
+
+    eventDelete: function (id) {
+      state.events = state.events.filter(function (e) { return e.id !== id; });
+      save(); emit();
     },
 
     stats: function () {
