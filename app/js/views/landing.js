@@ -41,6 +41,16 @@
     return { open: false, next: null };
   }
 
+  /* "Fri 23 Oct · 21:00" in Johannesburg time, whatever the viewer's zone. */
+  function fmtWhen(iso) {
+    try {
+      var d = new Date(iso);
+      var day = new Intl.DateTimeFormat('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Africa/Johannesburg' }).format(d);
+      var time = new Intl.DateTimeFormat('en-ZA', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Africa/Johannesburg' }).format(d);
+      return day + ' · ' + time;
+    } catch (e) { return new Date(iso).toLocaleString(); }
+  }
+
   /* Sections fade up as they enter the screen. Without IntersectionObserver
      (or with reduced motion) everything is simply visible. */
   function revealOnScroll(host) {
@@ -102,6 +112,30 @@
       (special ? '<div class="tonight__s"><span class="tag tag--new">Demo special</span> ' +
         '<strong>' + UI.esc(special.name) + '</strong> ' + UI.money(special.base_price_cents) + '</div>' : '') +
       '<button class="btn btn--primary" data-start>Order now</button></div>';
+
+    /* ---------- events (admin-published; hidden when none are upcoming) ---------- */
+    var evs = global.Store.upcomingEvents();
+    if (evs.length) {
+      h += '<div class="sect reveal events"><div class="sect__h"><h2>Nights &amp; events</h2>' +
+        '<span class="tiny muted">Tickets link out to the ticket seller</span></div><div class="evgrid">';
+      evs.slice(0, 6).forEach(function (ev) {
+        var when = fmtWhen(ev.starts_at);
+        var thumb = ev.image ? '../assets/events/' + ev.image.replace(/\.jpg$/, '-thumb.jpg') : '';
+        h += '<article class="evcard">' +
+          (thumb ? '<img class="evcard__img" src="' + thumb + '" alt="" loading="lazy">' : '') +
+          '<div class="evcard__scrim"></div>' +
+          '<div class="evcard__body">' +
+            '<span class="evcard__kind">' + UI.esc(ev.kind) + '</span>' +
+            '<h3 class="evcard__t">' + UI.esc(ev.title) + '</h3>' +
+            '<div class="evcard__when">' + UI.esc(when) + '</div>' +
+            '<div class="evcard__where">' + UI.esc(ev.venue) + '</div>' +
+            '<p class="evcard__d">' + UI.esc(ev.blurb) + '</p>' +
+            (ev.ticket_url ? '<a class="btn btn--primary btn--sm" href="' + UI.esc(ev.ticket_url) +
+              '" target="_blank" rel="noopener">' + UI.esc(ev.ticket_label || 'Get tickets') + ' &rarr;</a>' : '') +
+          '</div></article>';
+      });
+      h += '</div></div>';
+    }
 
     /* ---------- choose branch ---------- */
     h += '<div class="wrap"><div class="sect">' +
