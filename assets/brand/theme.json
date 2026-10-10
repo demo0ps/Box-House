@@ -1,0 +1,55 @@
+{
+  "_comment": "Design tokens for the demo. Two palettes deliberately: the logo's own colours vs the brand colours the client documented. Flip `theme.mode` to switch the whole app.",
+  "theme": {
+    "mode": "brand",
+    "modes": {
+      "brand": {
+        "_note": "Yellow + black, taken from the client's written brief (containers painted black and yellow). This is what the client described their brand as.",
+        "bg": "#0A0A0A",
+        "surface": "#141414",
+        "surface_2": "#1E1E1E",
+        "border": "#2A2A2A",
+        "text": "#F5F1E8",
+        "text_muted": "#9A9488",
+        "primary": "#FFD100",
+        "primary_text": "#0A0A0A",
+        "accent": "#E4572E",
+        "success": "#2E9E5B",
+        "warn": "#E8A33D",
+        "danger": "#D64545"
+      },
+      "logo": {
+        "_note": "Colours actually extracted from the supplied logo file (cream / tan / brown / deep red). Warmer, food-photography feel. Does NOT match the documented yellow-and-black brand - here because the client's file analyses this way.",
+        "bg": "#26221B",
+        "surface": "#322C22",
+        "surface_2": "#3E362A",
+        "border": "#4A4133",
+        "text": "#EFF0E6",
+        "text_muted": "#C5BD8A",
+        "primary": "#AF874E",
+        "primary_text": "#26221B",
+        "accent": "#7E2E22",
+        "success": "#6E8B4A",
+        "warn": "#C99A3F",
+        "danger": "#A33A2E"
+      }
+    }
+  },
+
+  "logo_extracted": ["#26221B", "#AF874E", "#765D40", "#C5BD8A", "#EFF0E6", "#7E2E22"],
+  "brand_declared": ["#FFD100", "#0A0A0A"],
+
+  "typography": {
+    "display": "'Archivo Black', 'Arial Black', 'Helvetica Neue', Impact, sans-serif",
+    "body": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    "mono": "'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace",
+    "_note": "Bold heavy sans per the brand brief. Falls back to system fonts - no external font loading, so it works offline and costs nothing."
+  },
+
+  "shape": {
+    "radius": "14px",
+    "radius_sm": "8px",
+    "radius_lg": "22px",
+    "_note": "Container branding is boxy - sharp-ish corners, not pill-shaped."
+  }
+}
