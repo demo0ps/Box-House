@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Box House — Ordering Platform</title>
+<meta name="description" content="Online ordering, kitchen console and delivery management for The Box House.">
+
+<link rel="icon" href="../assets/brand/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/brand/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="../assets/brand/favicon-16.png">
+<link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png">
+
+<meta property="og:title" content="The Box House — Eat 4 Less">
+<meta property="og:description" content="One smile. One adventure. One family at a time.">
+<meta property="og:image" content="../assets/brand/og-image.png">
+
+<link rel="stylesheet" href="css/app.css?v=20261010c">
+<link rel="stylesheet" href="css/storefront.css?v=20261010e">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <img class="brand__mark" src="../assets/brand/logo-512.png" alt="The Box House">
+    <div class="brand__text">
+      <strong>THE BOX HOUSE</strong>
+      <span>Eat 4 Less</span>
+    </div>
+  </div>
+
+  <nav class="roles" id="roles">
+    <button class="role" data-view="store"      title="The storefront customers land on">Storefront</button>
+    <button class="role" data-view="split"      title="Customer + kitchen side by side">Split demo</button>
+    <button class="role" data-view="kitchen"    title="Kitchen order console">Kitchen</button>
+    <button class="role" data-view="dispatch"   title="Delivery dispatch board">Dispatch</button>
+    <button class="role" data-view="driver"     title="Driver's phone view">Driver</button>
+    <button class="role" data-view="admin"      title="Back office">Admin</button>
+  </nav>
+
+  <div class="topbar__right">
+    <span class="pill pill--demo">DEMO</span>
+    <button class="iconbtn" id="resetBtn" title="Reset demo data">Reset</button>
+  </div>
+</header>
+
+<main id="view" class="view"></main>
+<div id="modal" class="modal" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="js/embedded-data.js?v=20261010c"></script>
+<script src="js/embedded-instagram.js?v=20261010d"></script>
+<script src="js/data.js?v=20261010c"></script>
+<script src="js/store.js?v=20261010c"></script>
+<script src="js/ui.js?v=20261010c"></script>
+<script src="js/views/landing.js?v=20261010c"></script>
+<script src="js/views/customer.js?v=20261010c"></script>
+<script src="js/views/kitchen.js?v=20261010c"></script>
+<script src="js/views/dispatch.js?v=20261010c"></script>
+<script src="js/views/driver.js?v=20261010c"></script>
+<script src="js/views/admin.js?v=20261010c"></script>
+<script src="js/app.js?v=20261010c"></script>
+</body>
+</html>
